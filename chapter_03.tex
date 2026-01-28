@@ -1,0 +1,685 @@
+\begin{chapterpage}{Editor}
+\begin{chapteritems}
+\item Modes
+\item ISO Mode
+\item Background Color
+\item Scrolling
+\item New Control Characters
+\item Keyboard Layouts
+\item Default Layout
+\end{chapteritems}
+\end{chapterpage}
+
+\section*{Chapter 3: Editor}
+
+The X16 has a built-in screen editor that is backwards-compatible with the C64, but has many new features.
+
+\subsection*{Modes}
+
+The editor's default mode is 80x60 text mode. The following text mode resolutions are supported:
+\begin{longtable}{l l}
+Mode & Description \\
+\hline
+\$00 & 80x60 text \\
+\$01 & 80x30 text \\
+\$02 & 40x60 text \\
+\$03 & 40x30 text \\
+\$04 & 40x15 text \\
+\$05 & 20x30 text \\
+\$06 & 20x15 text \\
+\$07 & 22x23 text \\
+\$08 & 64x50 text \\
+\$09 & 64x25 text \\
+\$0A & 32x50 text \\
+\$0B & 32x25 text \\
+\$80 & 320x240@256c<br/>40x30 text \\
+\end{longtable}
+
+Mode \$80 contains two layers: a text layer on top of a graphics screen. In this mode, text color 0 is translucent instead of black.
+
+To switch modes, use the BASIC statement \verb|SCREEN| or the KERNAL API \verb|screen_mode|. In the BASIC editor, the F4 key toggles between modes 0 (80x60) and 3 (40x30).
+
+<!-- For PDF formatting -->
+<div class="page-break"></div>
+
+\subsection*{ISO Mode}
+
+In addition to PETSCII, the X16 also supports the ISO-8859-15 character encoding. In ISO-8859-15 mode ("ISO mode"):
+\begin{itemize}
+\item 
+The character set is switched from Commodore-style (with PETSCII drawing characters) to a new ASCII/ISO-8859-15 compatible set, which covers most Western European writing systems.
+
+\item 
+The encoding (\verb|CHR$()| in BASIC and \verb|BSOUT| in machine language) now complies with ASCII and ISO-8859-15.
+
+\item 
+The keyboard driver will return ASCII/ISO-8859-15 codes.
+
+\end{itemize}
+
+This is the encoding:
+\begin{longtable}{l l l l l l l l l l l l l l l l l}
+ & x0 & x1 & x2 & x3 & x4 & x5 & x6 & x7 & x8 & x9 & xA & xB & xC & xD & xE & xF \\
+\hline
+\textbf{0x} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+\textbf{1x} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+\textbf{2x} &  & ! & " & \# & \$ & \% & \& & ' & ( & ) & * & + & , & - & . & / \\
+\textbf{3x} & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & : & ; & < & = & > & ? \\
+\textbf{4x} & @ & A & B & C & D & E & F & G & H & I & J & K & L & M & N & O \\
+\textbf{5x} & P & Q & R & S & T & U & V & W & X & Y & Z & [ & \ & ] & \^{} & \_ \\
+\textbf{6x} & ` & a & b & c & d & e & f & g & h & i & j & k & l & m & n & o \\
+\textbf{7x} & p & q & r & s & t & u & v & w & x & y & z & \{ & | & \} & ~ &  \\
+\textbf{8x} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+\textbf{9x} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
+\textbf{Ax} &  & ¡ & ¢ & £ & € & ¥ & Š & § & š & © & ª & « & ¬ & 🦋 & ® & ¯ \\
+\textbf{Bx} & ° & ± & ² & ³ & Ž & µ & ¶ & · & ž & ¹ & º & » & Œ & œ & Ÿ & ¿ \\
+\textbf{Cx} & À & Á & Â & Ã & Ä & Å & Æ & Ç & È & É & Ê & Ë & Ì & Í & Î & Ï \\
+\textbf{Dx} & Ð & Ñ & Ò & Ó & Ô & Õ & Ö & × & Ø & Ù & Ú & Û & Ü & Ý & Þ & ß \\
+\textbf{Ex} & à & á & â & ã & ä & å & æ & ç & è & é & ê & ë & ì & í & î & ï \\
+\textbf{Fx} & ð & ñ & ò & ó & ô & õ & ö & ÷ & ø & ù & ú & û & ü & ý & þ & ÿ \\
+\end{longtable}
+\begin{itemize}
+\item 
+The non-printable areas \$AD-\$1F and \$80-\$9F in the character set are filled with inverted variants of the codes \$40-\$5F and \$60-\$7F, respectively.
+
+\item 
+The code \$AD is a non-printable soft hyphen in ISO-8859-15. The ROM character set contains the Commander X16 logo at this location.
+
+\end{itemize}
+
+ISO mode can be enabled and disabled using two new control codes:
+\begin{itemize}
+\item 
+\verb|CHR$($0F)|: enable ISO mode
+
+\item 
+\verb|CHR$($8F)|: enable PETSCII mode (default)
+
+\end{itemize}
+
+You can also enable ISO mode in direct mode by pressing Ctrl+\verb|O|.
+
+\textbf{Important:} In ISO mode, BASIC keywords need to be written in upper case, that is, they have to be entered with the Shift key down, and abbreviating keywords is no longer possible.
+
+\subsection*{Background Color}
+
+In regular BASIC text mode, the video controller supports 16 foreground colors and 16 background colors for each character on the screen.
+
+The new "swap fg/bg color" code is useful to change the background color of the cursor, like this:
+
+\begin{lstlisting}
+PRINT CHR$(1);   : REM SWAP FG/BG
+PRINT CHR$($1C); : REM SET FG COLOR TO RED
+PRINT CHR$(1);   : REM SWAP FG/BG
+\end{lstlisting}
+
+The new BASIC instruction \verb|COLOR| makes this easier, but the trick above can also be used from machine code programs.
+
+To set the background color of the complete screen, it just has to be cleared after setting the color:
+
+\begin{lstlisting}
+PRINT CHR$(147);
+\end{lstlisting}
+
+\subsection*{Scrolling}
+
+The C64 editor could only scroll the screen up (when overflowing the last line or printing or entering DOWN on the last line). The X16 editor scrolls both ways: When the cursor is on the first line and UP is printed or entered, the screen contents scroll down by a line.
+
+\subsection*{New Control Characters}
+
+This is the set of all supported PETSCII control characters. Entries in bold indicate new codes compared to the C64:
+
+If there are two meanings listed, the first indicates input (a keypress) and the second indicates output.
+\begin{longtable}{l l l l}
+Code &  &  & Code \\
+\hline
+\$00 & NULL & \textbf{VERBATIM MODE} & \$80 \\
+\$01 & \textbf{SWAP COLORS} & COLOR: ORANGE & \$81 \\
+\$02 & \textbf{PAGE DOWN} & \textbf{PAGE UP} & \$82 \\
+\$03 & STOP & RUN & \$83 \\
+\$04 & \textbf{END} & \textbf{HELP} & \$84 \\
+\$05 & COLOR: WHITE & F1 & \$85 \\
+\$06 & \textbf{MENU} & F3 & \$86 \\
+\$07 & \textbf{BELL} & F5 & \$87 \\
+\$08 & DISALLOW CHARSET SW (SHIFT+ALT) & F7 & \$88 \\
+\$09 & \textbf{TAB} / ALLOW CHARSET SW & F2 & \$89 \\
+\$0A & \textbf{LF} & F4 & \$8A \\
+\$0B & \textbf{LAYOUT SWAP} & F6 & \$8B \\
+\$0C & - & F8 & \$8C \\
+\$0D & RETURN & SHIFTED RETURN & \$8D \\
+\$0E & CHARSET: LOWER/UPPER & CHARSET: UPPER/PETSCII & \$8E \\
+\$0F & \textbf{CHARSET: ISO ON} & \textbf{CHARSET: ISO OFF} & \$8F \\
+\$10 & \textbf{F9} & COLOR: BLACK & \$90 \\
+\$11 & CURSOR: DOWN & CURSOR: UP & \$91 \\
+\$12 & REVERSE ON & REVERSE OFF & \$92 \\
+\$13 & HOME & CLEAR & \$93 \\
+\$14 & DEL (PS/2 BACKSPACE) & INSERT & \$94 \\
+\$15 & \textbf{F10} & COLOR: BROWN & \$95 \\
+\$16 & \textbf{F11} & COLOR: LIGHT RED & \$96 \\
+\$17 & \textbf{F12} & COLOR: DARK GRAY & \$97 \\
+\$18 & \textbf{SHIFT+TAB} & COLOR: MIDDLE GRAY & \$98 \\
+\$19 & \textbf{FWD DEL (PS/2 DEL)} & COLOR: LIGHT GREEN & \$99 \\
+\$1A & - & COLOR: LIGHT BLUE & \$9A \\
+\$1B & ESC & COLOR: LIGHT GRAY & \$9B \\
+\$1C & COLOR: RED & COLOR: PURPLE & \$9C \\
+\$1D & CURSOR: RIGHT & CURSOR: LEFT & \$9D \\
+\$1E & COLOR: GREEN & COLOR: YELLOW & \$9E \\
+\$1F & COLOR: BLUE & COLOR: CYAN & \$9F \\
+\end{longtable}
+
+\textbf{Notes:}
+\begin{itemize}
+\item 
+\$01: SWAP COLORS swaps the foreground and background colors in text mode
+
+\item 
+\$07/\$09/\$0A/\$18/\$1B: have been added for ASCII compatibility. \textit{[\$0A/\$18/\$1B do not have any effect on output. Outputs of \$08/\$09 have their traditional C64 effect]}
+
+\item 
+\$80: VERBATIM MODE prints the next character (only!) as a glyph without interpretation. This is similar to quote mode, but also includes codes CR (\$0D) and DEL (\$14).
+
+\item 
+F9-F12: these codes match the C65 additions
+
+\item 
+\$84: This code is generated when pressing SHIFT+END.
+
+\item 
+Additionally, the codes \$04/\$06/\$0B/\$0C are interpreted when printing in graphics mode using \verb|GRAPH_put_char|.
+
+\end{itemize}
+
+<!-- For PDF formatting -->
+<div class="page-break"></div>
+
+\subsection*{Keyboard Layouts}
+
+The editor supports multiple keyboard layouts.
+
+\subsection*{Default Layout}
+
+On boot, the US layout (\verb|ABC/X16|) is active:
+\begin{itemize}
+\item 
+In PETSCII mode, it matches the US layout where possible, and can reach all PETSCII symbols.
+
+\item 
+In ISO mode, it matches the Macintosh US keyboard and can reach all ISO-8859-15 characters. Some characters are reachable through key combinations:
+
+\end{itemize}
+\begin{longtable}{l l}
+Key & Result \\
+\hline
+Alt+\verb|1| & ¡ \\
+Alt+\verb|3| & £ \\
+Alt+\verb|4| & ¢ \\
+Alt+\verb|5| & § \\
+Alt+\verb|7| & ¶ \\
+Alt+\verb|9| & ª \\
+Alt+\verb|0| & º \\
+Alt+\verb|q| & œ \\
+Alt+\verb|r| & ® \\
+Alt+\verb|t| & Þ \\
+Alt+\verb|y| & ¥ \\
+Alt+\verb|o| & ø \\
+Alt+\verb|\| & « \\
+Alt+\verb|s| & ß \\
+Alt+\verb|d| & ð \\
+Alt+\verb|g| & © \\
+Alt+\verb|l| & ¬ \\
+Alt+\verb|'| & æ \\
+Alt+\verb|m| & µ \\
+Alt+\verb|/| & ÷ \\
+Shift+Alt+\verb|2| & € \\
+Shift+Alt+\verb|8| & ° \\
+Shift+Alt+\verb|9| & · \\
+Shift+Alt+\verb|-| & X16 logo \\
+Shift+Alt+\verb|=| & ± \\
+Shift+Alt+\verb|q| & Œ \\
+Shift+Alt+\verb|t| & þ \\
+Shift+Alt+\verb|\| & » \\
+Shift+Alt+\verb|a| & ¹ \\
+Shift+Alt+\verb|d| & Ð \\
+Shift+Alt+\verb|k| & X16 logo \\
+Shift+Alt+\verb|'| & Æ \\
+Shift+Alt+\verb|c| & ³ \\
+Shift+Alt+\verb|b| & ² \\
+Shift+Alt+\verb|/| & ¿ \\
+\end{longtable}
+
+(The X16 logo is code point, SHY, soft-hyphen.)
+
+The following combinations are dead keys:
+\begin{itemize}
+\item 
+Alt+<tt>`</tt>
+
+\item 
+Alt+\verb|6|
+
+\item 
+Alt+\verb|e|
+
+\item 
+Alt+\verb|u|
+
+\item 
+Alt+\verb|p|
+
+\item 
+Alt+\verb|a|
+
+\item 
+Alt+\verb|k|
+
+\item 
+Alt+\verb|;|
+
+\item 
+Alt+\verb|x|
+
+\item 
+Alt+\verb|c|
+
+\item 
+Alt+\verb|v|
+
+\item 
+Alt+\verb|n|
+
+\item 
+Alt+\verb|,|
+
+\item 
+Alt+\verb|.|
+
+\item 
+Shift+Alt+\verb|S|
+
+\end{itemize}
+
+They generate additional characters when combined with a second keypress:
+\begin{longtable}{l l l}
+First <br/>Key & Second <br/>Key & Result \\
+\hline
+Alt+<tt>`</tt> & \verb|a| & à \\
+Alt+<tt>`</tt> & \verb|e| & è \\
+Alt+<tt>`</tt> & \verb|i| & ì \\
+Alt+<tt>`</tt> & \verb|o| & ò \\
+Alt+<tt>`</tt> & \verb|u| & ù \\
+Alt+<tt>`</tt> & \verb|A| & À \\
+Alt+<tt>`</tt> & \verb|E| & È \\
+Alt+<tt>`</tt> & \verb|I| & Ì \\
+Alt+<tt>`</tt> & \verb|O| & Ò \\
+Alt+<tt>`</tt> & \verb|U| & Ù \\
+Alt+<tt>`</tt> & \verb|␣| & ` \\
+Alt+\verb|6| & \verb|e| & ê \\
+Alt+\verb|6| & \verb|u| & û \\
+Alt+\verb|6| & \verb|i| & î \\
+Alt+\verb|6| & \verb|o| & ô \\
+Alt+\verb|6| & \verb|a| & â \\
+Alt+\verb|6| & \verb|E| & Ê \\
+Alt+\verb|6| & \verb|U| & Û \\
+Alt+\verb|6| & \verb|I| & Î \\
+Alt+\verb|6| & \verb|O| & Ô \\
+Alt+\verb|6| & \verb|A| & Â \\
+Alt+\verb|e| & \verb|e| & é \\
+Alt+\verb|e| & \verb|y| & ý \\
+Alt+\verb|e| & \verb|u| & ú \\
+Alt+\verb|e| & \verb|i| & í \\
+Alt+\verb|e| & \verb|o| & ó \\
+Alt+\verb|e| & \verb|a| & á \\
+Alt+\verb|e| & \verb|E| & É \\
+Alt+\verb|e| & \verb|Y| & Ý \\
+Alt+\verb|e| & \verb|U| & Ú \\
+Alt+\verb|e| & \verb|I| & Í \\
+Alt+\verb|e| & \verb|O| & Ó \\
+Alt+\verb|e| & \verb|A| & Á \\
+Alt+\verb|u| & \verb|e| & ë \\
+Alt+\verb|u| & \verb|y| & ÿ \\
+Alt+\verb|u| & \verb|u| & ü \\
+Alt+\verb|u| & \verb|i| & ï \\
+Alt+\verb|u| & \verb|o| & ö \\
+Alt+\verb|u| & \verb|a| & ä \\
+Alt+\verb|u| & \verb|E| & Ë \\
+Alt+\verb|u| & \verb|Y| & Ÿ \\
+Alt+\verb|u| & \verb|U| & Ü \\
+Alt+\verb|u| & \verb|I| & Ï \\
+Alt+\verb|u| & \verb|O| & Ö \\
+Alt+\verb|u| & \verb|A| & Ä \\
+Alt+\verb|p| & \verb|␣| & , \\
+Alt+\verb|a| & \verb|␣| & ¯ \\
+Alt+\verb|k| & \verb|a| & å \\
+Alt+\verb|k| & \verb|A| & Å \\
+Alt+\verb|x| & \verb|␣| & . \\
+Alt+\verb|c| & \verb|c| & ç \\
+Alt+\verb|c| & \verb|C| & Ç \\
+Alt+\verb|v| & \verb|s| & š \\
+Alt+\verb|v| & \verb|z| & ž \\
+Alt+\verb|v| & \verb|S| & Š \\
+Alt+\verb|v| & \verb|Z| & Ž \\
+Alt+\verb|n| & \verb|o| & õ \\
+Alt+\verb|n| & \verb|a| & ã \\
+Alt+\verb|n| & \verb|n| & ñ \\
+Alt+\verb|n| & \verb|O| & Õ \\
+Alt+\verb|n| & \verb|A| & Ã \\
+Alt+\verb|n| & \verb|N| & Ñ \\
+Shift+Alt+\verb|s| & \verb|␣| & \xa0 \\
+Shift+Alt+\verb|;| & \verb|=| & × \\
+\end{longtable}
+
+"␣" denotes the space bar.
+
+\subsubsection*{ROM Keyboard Layouts}
+
+The following keyboard layouts are available from ROM. You can select one directly with the BASIC \verb|KEYMAP| command, e.g. \verb|KEYMAP"ABC/X16"|, or via the X16 Control Panel with the BASIC \verb|MENU| command.
+\begin{longtable}{l l l}
+Identifier & Description & Code \\
+\hline
+\verb|ABC/X16| & ABC - Extended (X16) & - \\
+\verb|EN-US/INT| & United States - International & \href{http://kbdlayout.info/00020409}{00020409} \\
+\verb|EN-GB| & United Kingdom & \href{http://kbdlayout.info/00000809}{00000809} \\
+\verb|SV-SE| & Swedish & \href{http://kbdlayout.info/0000041D}{0000041D} \\
+\verb|DE-DE| & German & \href{http://kbdlayout.info/00000407}{00000407} \\
+\verb|DA-DK| & Danish & \href{http://kbdlayout.info/00000406}{00000406} \\
+\verb|IT-IT| & Italian & \href{http://kbdlayout.info/00000410}{00000410} \\
+\verb|PL-PL| & Polish (Programmers) & \href{http://kbdlayout.info/00000415}{00000415} \\
+\verb|NB-NO| & Norwegian & \href{http://kbdlayout.info/00000414}{00000414} \\
+\verb|HU-HU| & Hungarian & \href{http://kbdlayout.info/0000040E}{0000040E} \\
+\verb|ES-ES| & Spanish & \href{http://kbdlayout.info/0000040A}{0000040A} \\
+\verb|FI-FI| & Finnish & \href{http://kbdlayout.info/0000040B}{0000040B} \\
+\verb|PT-BR| & Portuguese (Brazil ABNT) & \href{http://kbdlayout.info/00000416}{00000416} \\
+\verb|CS-CZ| & Czech & \href{http://kbdlayout.info/00000405}{00000405} \\
+\verb|JA-JP| & Japanese & \href{https://github.com/X16Community/x16-rom/pull/364}{Custom IME} (since r49) \\
+\verb|FR-FR| & French & \href{http://kbdlayout.info/0000040C}{0000040C} \\
+\verb|DE-CH| & Swiss German & \href{http://kbdlayout.info/00000807}{00000807} \\
+\verb|EN-US/DVO| & United States - Dvorak & \href{http://kbdlayout.info/00010409}{00010409} \\
+\verb|ET-EE| & Estonian & \href{http://kbdlayout.info/00000425}{00000425} \\
+\verb|FR-BE| & Belgian French & \href{http://kbdlayout.info/0000080C}{0000080C} \\
+\verb|EN-CA| & Canadian French & \href{http://kbdlayout.info/00001009}{00001009} \\
+\verb|IS-IS| & Icelandic & \href{http://kbdlayout.info/0000040F}{0000040F} \\
+\verb|PT-PT| & Portuguese & \href{http://kbdlayout.info/00000816}{00000816} \\
+\verb|HR-HR| & Croatian & \href{http://kbdlayout.info/0000041A}{0000041A} \\
+\verb|SK-SK| & Slovak & \href{http://kbdlayout.info/0000041B}{0000041B} \\
+\verb|SL-SI| & Slovenian & \href{http://kbdlayout.info/00000424}{00000424} \\
+\verb|LV-LV| & Latvian & \href{http://kbdlayout.info/00000426}{00000426} \\
+\verb|LT-LT| & Lithuanian IBM & \href{http://kbdlayout.info/00000427}{00000427} \\
+\end{longtable}
+
+All remaining keyboards are based on the respective Windows layouts. \verb|EN-US/INT| differs from \verb|EN-US| only in Alt/AltGr combinations and some dead keys.
+
+The BASIC command \verb|KEYMAP| allows activating a specific keyboard layout. It can be added to the auto-boot file, e.g.:
+
+\begin{lstlisting}
+10 KEYMAP"NB-NO"
+SAVE"AUTOBOOT.X16
+\end{lstlisting}
+
+PETSCII code 11 (\$0B) or Ctrl+K is used to toggle between the current keyboard layout and the previously loaded one.  This function can be activated by pressing Ctrl+K in the BASIC editor or by sending the code to the screen with the BASIC PRINT command or the CHROUT KERNAL API call.  The layout swap function works only with built-in ROM-based layouts and will not properly swap back to a custom layout in RAM.
+
+\subsubsection*{Loadable Keyboard Layouts}
+
+The tables for the active keyboard layout reside in banked RAM, at \$A000 on bank 0:
+\begin{longtable}{l l}
+Addresses & Description \\
+\hline
+\$A000-\$A07F & Table 0 \\
+\$A080-\$A0FF & Table 1 \\
+\$A100-\$A17F & Table 2 \\
+\$A180-\$A1FF & Table 3 \\
+\$A200-\$A27F & Table 4 \\
+\$A280-\$A07F & Table 5 \\
+\$A300-\$A37F & Table 6 \\
+\$A380-\$A3FF & Table 7 \\
+\$A400-\$A47F & Table 8 \\
+\$A480-\$A4FF & Table 9 \\
+\$A500-\$A57F & Table 10 \\
+\$A580-\$A58F & big-endian bitfield:<br/>keynum codes for which Caps means Shift \\
+\$A590-\$A66F & dead key table \\
+\$A670-\$A67E & ASCIIZ identifier (e.g. "ABC/X16") \\
+\end{longtable}
+
+The first byte of each of the 11 tables is the table ID which contains the encoding and the combination of modifiers that this table is for.
+\begin{longtable}{l l}
+Bit & Description \\
+\hline
+7 & 0: PETSCII, 1: ISO \\
+6-3 & always 0 \\
+2 & Ctrl \\
+1 & Alt \\
+0 & Shift \\
+\end{longtable}
+\begin{itemize}
+\item 
+AltGr is represented by Ctrl+Alt.
+
+\item 
+ID \$C6 represents Alt \textit{or} AltGr (ISO only)
+
+\item 
+ID \$C7 represents Shift+Alt \textit{or} Shift+AltGr (ISO only)
+
+\item 
+Empty tables have an ID of \$FF.
+
+\end{itemize}
+
+The identifier is followed by 127 output codes for the keynum inputs 1-127.
+\begin{itemize}
+\item 
+Dead keys (i.e. keys that don't generate anything by themselves but modify the next key) have a code of 0 and are further described in the dead key table (ISO only)
+
+\item 
+Keys that produce nothing have an entry of 0. (They can be distinguished from dead keys as they don't have an entry in the dead key table.)
+
+\end{itemize}
+
+The dead key table has one section for every dead key with the following layout:
+\begin{longtable}{l l}
+Byte & Description \\
+\hline
+0 & dead key ID (PETSCII/ISO and Shift/Alt/Ctrl) \\
+1 & dead key scancode \\
+2 & full length of this table in bytes \\
+3 & first additional key ISO code \\
+4 & first effective key ISO code \\
+5 & second additional key ISO code \\
+6 & second effective key ISO code \\
+... & ... \\
+n-1 & terminator 0xFF \\
+\end{longtable}
+
+Custom layouts can be loaded from disk like this:
+
+\begin{lstlisting}
+BLOAD"KEYMAP",8,0,$A000
+\end{lstlisting}
+
+Here is an example that activates a layout derived from "ABC/X16", with unshifted Y and Z swapped in PETSCII mode:
+
+\begin{lstlisting}
+100 KEYMAP"ABC/X16"                               :REM START WITH DEFAULT LAYOUT
+110 BANK 0                                        :REM ACTIVATE RAM BANK 0
+120 FORI=0TO11:B=$A000+128*I:IFPEEK(B)<>0THENNEXT :REM SEARCH FOR TABLE $00
+130 POKEB+$2E,ASC("Y")                            :REM SET KEYNUM $2E ('Z') to 'Y'
+140 POKEB+$16,ASC("Z")                            :REM SET KEYNUM $16 ('Y') to 'Z'
+170 REM
+180 REM *** DOING THE SAME FOR SHIFTED CHARACTERS
+190 REM *** IS LEFT AS AN EXERCISE TO THE READER
+\end{lstlisting}
+
+\subsubsection*{Custom BASIN PETSCII code override handler}
+
+\textbf{Note}: This behavior only exists in R44 or later
+
+Some use cases of the BASIN (CHRIN) API call may benefit from being able to modify its behavior, such as intercepting or redirecting certain PETSCII codes.  The Machine Language Monitor uses this mechanism to implement custom behavior for F-keys and for loading additional disassembly or memory display when scrolling the screen.
+
+To set up a custom handler, one must configure it before each call to BASIN.
+
+The key handler vector is in RAM bank 0 at addresses \$ac03-\$ac05.  The first two bytes are the call address, and the next byte is the RAM or ROM bank.  If your callback routine is in low ram, specifying the bank in \$ac05 is not necessary.
+
+The editor will call your callback for every keystroke received and pass the PETSCII code in the A register with carry set.  If your handler does not want to override, simply return with carry set.
+
+If you do wish to override, return with carry clear.  The editor will then unblink the cursor and call your callback a second time with carry clear \textit{for the same PETSCII code}.  This is your opportunity to override. Before returning, you are free to update the screen or perform other KERNAL API calls (with the exception of BASIN). At the end of your routine, set \verb|A| to the PETSCII code you wish the editor to process. If you wish to suppress the input keystroke, set \verb|A| to \verb|0|.
+
+\begin{lstlisting}
+ram_bank = $00
+edkeyvec = $ac03
+edkeybk  = $ac05
+
+BASIN    = $ffcf
+BSOUT    = $ffd2
+
+.segment "ONCE"
+.segment "STARTUP"
+    jmp start
+.segment "CODE"
+
+keyhandler:
+    bcs @check
+    cmp #$54 ; 'T'
+    bne :+
+    lda #$57 ; 'W'
+    rts
+:   lda #$54 ; 'T'
+    rts
+@check:
+    cmp #$54 ; 'T'
+    beq @will_override
+    cmp #$57 ; 'W'
+    beq @will_override
+    sec
+    rts
+@will_override:
+    clc
+    rts
+
+enable_basin_callback:
+    lda ram_bank
+    pha
+    stz ram_bank ; RAM bank 0 contains the handler vector
+    php
+    sei
+    lda #<keyhandler
+    sta edkeyvec
+    lda #>keyhandler
+    sta edkeyvec+1
+    ; setting the bank is optional and unnecessary
+    ; if the handler is in low RAM.
+    ; lda #0
+    ; sta edkeybk
+    plp
+    pla
+    sta ram_bank
+    rts
+
+start:
+    jsr enable_basin_callback
+    ; T and W are swapped
+@1: jsr BASIN
+    cmp #13
+    bne @1
+    jsr BSOUT
+    ; normal BASIN
+@2: jsr BASIN
+    cmp #13
+    bne @2
+
+    rts
+
+\end{lstlisting}
+
+\subsubsection*{Custom Keyboard Keynum Code Handler}
+
+\textbf{Note}: This behavior is for R43 or later, differing from previous releases.
+
+If you need more control over the translation of keynum codes into PETSCII/ISO codes, or if you need to intercept any key down or up event, you can hook the custom scancode handler vector at \$032E/\$032F.
+
+On all key down and key up events, the keyboard driver calls this vector with
+\begin{itemize}
+\item 
+.A: keycode, where bit 7 (most-significant) is clear on key down, and set on key up.
+
+\end{itemize}
+
+The keynum codes are enumerated \href{https://github.com/X16Community/x16-rom/blob/master/inc/keycode.inc}{here}, and their names, similar to that of PS/2 codes, are based on their function in the US layout.
+
+The handler needs to return a key event the same way in .A
+\begin{itemize}
+\item 
+To remove a keypress so that it is not added to the keyboard queue, return .A = 0.
+
+\item 
+To manually add a key to the keyboard queue, use the \verb|kbdbuf_put| KERNAL API.
+
+\end{itemize}
+
+You can even write a completely custom keyboard translation layer:
+\begin{itemize}
+\item 
+Place the code at \$A000-\$A58F in RAM bank 0. This is safe, since the tables won't be used in this case, and the active RAM bank will be set to 0 before entry to the handler.
+
+\item 
+Fill the locale at \$A590.
+
+\item 
+For every keynum that should produce a PETSCII/ISO code, use \verb|kbdbuf_put| to store it in the keyboard buffer.
+
+\item 
+Always set .A = 0 before return from the custom handler.
+
+\end{itemize}
+
+\begin{lstlisting}
+;EXAMPLE: A custom handler that prints "A" on Alt key down
+
+setup:
+    sei
+    lda #<keyhandler
+    sta $032e
+    lda #>keyhandler
+    sta $032f
+    cli
+    rts
+
+keyhandler:
+    pha
+
+    and #$ff    ;ensure A sets flags
+    bmi exit    ;A & 0x80 is key up
+
+    cmp #$3c    ;Left Alt keynum
+    bne exit
+
+    lda #'a'
+    jsr $ffd2
+
+exit:
+    pla
+    rts
+\end{lstlisting}
+
+\subsubsection*{Function Key Shortcuts}
+
+The following Function key macros are pre-defined for your convenience. These shortcuts only work in the screen editor. When a program is running, the F-keys generate the corresponding PETSCII character code.
+\begin{longtable}{l l l}
+Key & Function & Comment \\
+\hline
+F1 & \verb|LIST:| & Lists the current program \\
+F2 & \verb|SAVE"@:| & Press F2 and then type a filename to save your program. The \verb|@:| instructs DOS to allow overwrite. \\
+F3 & \verb|LOAD "| & Load a file directly, or cursor up over a file listing and press F3 to load a program. \\
+F4 & 40/80 & Toggles between 40 and 80 column screen modes, clearing the screen. Pressing return is required to prevent accidental mode switches. \\
+F5 & \verb|RUN:| & Run the current program. \\
+F6 & \verb|MONITOR| & Opens the Supermon machine language monitor. \\
+F7 & \verb|DOS"$<cr>| & Displays a directory listing. \\
+F8 & \verb|DOS"| & Issue DOS commands. \\
+F9 & - & Not defined.  Formerly cycled through keyboard layouts. Instead, use the \verb|MENU| command to enter the X16 Control Panel, select one, and optionally save the layout as a boot preference. \\
+F10 & - & Not defined \\
+F11 & - & Not defined \\
+F12 & debug & debug features in emulators \\
+\end{longtable}
+
+<!-- For PDF formatting -->
+<div class="page-break"></div>
+
+
