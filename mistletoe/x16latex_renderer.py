@@ -8,6 +8,8 @@ from itertools import chain
 from urllib.parse import quote
 import mistletoe.latex_token as latex_token
 from mistletoe.base_renderer import BaseRenderer, URI_SAFE_CHARACTERS
+from mistletoe.block_token import HtmlBlock
+from mistletoe.span_token import HtmlSpan
 
 # (customizable) delimiters for inline code
 verb_delimiters = string.punctuation + string.digits
@@ -26,10 +28,10 @@ class X16LaTeXRenderer(BaseRenderer):
                       constructor.
         """
         #tokens = self._tokens_from_module(latex_token)
+        tokens = (HtmlBlock, HtmlSpan)
         self.packages = {}
         self.verb_delimiters = verb_delimiters
-        #super().__init__(*chain(tokens, extras), **kwargs)
-        super().__init__()
+        super().__init__(*tokens, **kwargs)
 
     def render_strong(self, token):
         return '\\textbf{{{}}}'.format(self.render_inner(token))
@@ -48,8 +50,10 @@ class X16LaTeXRenderer(BaseRenderer):
         if delimiter in content:  # no delimiter found
             raise RuntimeError('Unable to find delimiter for verb macro')
 
-        template = '\\verb{delimiter}{content}{delimiter}'
-        return template.format(delimiter=delimiter, content=content)
+        escaped = content.replace('\\', '\\textbackslash ').replace('$', '\\$').replace('#', '\\#').replace('{', '\\{').replace('}', '\\}').replace('&', '\\&').replace('_', '\\_').replace('%', '\\%').replace('^', '\\^{}')
+
+        template = '\\texttt{{{content}}}'
+        return template.format(content=escaped)
 
     def render_strikethrough(self, token):
         self.packages['ulem'] = ['normalem']
@@ -60,11 +64,12 @@ class X16LaTeXRenderer(BaseRenderer):
         return '\n\\includegraphics{{{}}}\n'.format(token.src)
 
     def render_link(self, token):
-        self.packages['hyperref'] = []
-        template = '\\href{{{target}}}{{{inner}}}'
-        inner = self.render_inner(token)
-        return template.format(target=self.escape_url(token.target),
-                               inner=inner)
+        #self.packages['hyperref'] = []
+        #template = '\\href{{{target}}}{{{inner}}}'
+        #inner = self.render_inner(token)
+        #return template.format(target=self.escape_url(token.target),
+        #                       inner=inner)
+        return self.render_inner(token)
 
     def render_auto_link(self, token):
         self.packages['hyperref'] = []
@@ -80,7 +85,8 @@ class X16LaTeXRenderer(BaseRenderer):
         return self.render_inner(token)
 
     def render_raw_text(self, token, escape=True):
-        return (token.content.replace('$', '\\$').replace('#', '\\#')
+        return (token.content.replace('\\', '\\textbackslash ')
+                             .replace('$', '\\$').replace('#', '\\#')
                              .replace('{', '\\{').replace('}', '\\}')
                              .replace('&', '\\&').replace('_', '\\_')
                              .replace('%', '\\%').replace('^', '\\^{}')
@@ -89,7 +95,7 @@ class X16LaTeXRenderer(BaseRenderer):
     def render_heading(self, token):
         inner = self.render_inner(token)
         if token.level == 1:
-            return '\n\\section*{{{}}}\n'.format(inner)
+            return ''
         elif token.level == 2:
             return '\n\\subsection*{{{}}}\n'.format(inner)
         return '\n\\subsubsection*{{{}}}\n'.format(inner)
@@ -124,10 +130,29 @@ class X16LaTeXRenderer(BaseRenderer):
     def render_table(self, token):
         def render_align(column_align):
             if column_align != [None]:
-                cols = [get_align(col) for col in token.column_align]
-                return '{{{}}}'.format(' '.join(cols))
+                cols = ""
+                index = 0
+                for col in token.column_align:
+                    try:
+                        w = self.x16_colwidths[index]
+                    except:
+                        w = 1
+                    index += 1
+                    c = ('X[' + str(w) + ',{align}] ').format(align=get_align(col))
+                    cols += c
+                return cols
             else:
                 return ''
+        
+        def render_hidden_columns():
+            if self.x16_colwidths == None:
+                return ""
+            else:
+                out = ""
+                for index in range(0,len(self.x16_colwidths)):
+                    if self.x16_colwidths[index] == 0:
+                        out += "column{" + str(index+1) + "} = {cmd=\\discardcol,colsep=0pt},\n"
+                return out
 
         def get_align(col):
             if col is None:
@@ -138,9 +163,16 @@ class X16LaTeXRenderer(BaseRenderer):
                 return 'r'
             raise RuntimeError('Unrecognized align option: ' + col)
 
-        template = ('\\begin{{longtable}}{align}\n'
-                    '{inner}'
-                    '\\end{{longtable}}\n')
+        template =  ('\\begin{{longtblr}}{{'
+                     'colspec = {{{colspec}}},\n'
+                     '{hidecol}'
+                     'width = \\linewidth,\n'
+                     'rowhead = 1,\n'
+                     'rowfoot = 0}}\n'
+                     '{inner}\n'
+                     '\\end{{longtblr}}\n'
+                    )
+        
         if hasattr(token, 'header'):
             head_template = '{inner}\\hline\n'
             head_inner = self.render_table_row(token.header)
@@ -148,8 +180,8 @@ class X16LaTeXRenderer(BaseRenderer):
         else:
             head_rendered = ''
         inner = self.render_inner(token)
-        align = render_align(token.column_align)
-        return template.format(inner=head_rendered + inner, align=align)
+        colspec = render_align(token.column_align)
+        return template.format(inner=head_rendered + inner, colspec=colspec, hidecol=render_hidden_columns())
 
     def render_table_row(self, token):
         cells = [self.render(child) for child in token.children]
@@ -173,14 +205,23 @@ class X16LaTeXRenderer(BaseRenderer):
 
     def render_document(self, token):
         chaptername = "?"
+        itemcount = 0
         chaptercontent = "\\begin{chapteritems}\n"
         for c in token._children:
             if c.__class__.__name__ == "Heading":
                 if c.level == 1:
                     chaptername = re.search(r":\s*(.*)", c._children[0].content).group(1)
+                    itemcount=0
                 elif c.level == 2:
-                    chaptercontent += "\\item " + c._children[0].content + "\n"
-        chaptercontent += "\\end{chapteritems}"
+                    try:
+                        chaptercontent += "\\item " + c._children[0].content + "\n"
+                    except:
+                        pass
+                    itemcount+=1
+        if itemcount > 0:
+            chaptercontent += "\\end{chapteritems}"
+        else:
+            chaptercontent = ""
         
         template = ('\\begin{{chapterpage}}{{{chapter}}}\n'
                     '{chapteritems}\n'
@@ -207,3 +248,23 @@ class X16LaTeXRenderer(BaseRenderer):
         quoted_url = quote(raw, safe=URI_SAFE_CHARACTERS)
         return quoted_url.replace('%', '\\%') \
                          .replace('#', '\\#')
+
+    x16_colwidths = None
+    def render_html_span(self, token) -> str:
+        content = token.content.lower()
+        if re.search(r"^<mark\s*>", content):
+            return "\\markbox{\\strut "
+        elif re.search(r"^</mark\s*>", content):
+            return "}"
+        
+        colwidths = re.search(r"^<span.*data-x16-colwidths=([\"'])(.+)\1", content)
+        if colwidths:
+            self.x16_colwidths = list(map(int, colwidths.group(2).split(",")))
+            return ""
+        
+        return ""
+    
+    def render_html_block(self, token) -> str:
+        return ""
+        #return token.content
+

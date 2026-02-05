@@ -10,28 +10,58 @@
 {\PassOptionsToClass{\CurrentOption}{book}}
 \ProcessOptions\relax
 
-% Packages
-\RequirePackage[english]{babel}
-\RequirePackage{geometry}
-\RequirePackage{xcolor}
-\RequirePackage{afterpage}
-\RequirePackage{titlesec}
-\RequirePackage{enumitem, calc}
-\RequirePackage{fancyhdr}
-\RequirePackage{hyperref}
-\RequirePackage{parskip}[parfill]
-\RequirePackage{tcolorbox}
-\RequirePackage{longtable}
-\RequirePackage{tabu}
-\RequirePackage{fontspec}
-\RequirePackage{listings}
-\RequirePackage{tabularray}
+% Page layout
 
-% Definitions
-\geometry{a5paper, portrait}
-\setmainfont{Poppins}
+    % 9x6in on A4 paper
+    %\RequirePackage[paperheight=9in,paperwidth=6in]{geometry}
+    %\RequirePackage[noaxes,cam,height=297mm,width=210mm,center]{crop}
+
+    % 9x6in, no bleed
+    \RequirePackage[paperheight=9in,paperwidth=6in]{geometry}
+
+% Packages
+\RequirePackage{fontspec}
+\RequirePackage[english]{babel}
+\RequirePackage{xcolor}
+\RequirePackage{titlesec} % For titleformat
+\RequirePackage{enumitem, calc} % For measurments
+\RequirePackage{fancyhdr} % For fancy page layout
+\RequirePackage{parskip}[parfill] % Paragraph spacing
+\RequirePackage{tcolorbox} % For boxes
+\RequirePackage{longtable}
+\RequirePackage{tabularray}
+\RequirePackage{listings}
+\RequirePackage{csquotes}
+
+% Definitions: Fonts
+\setmainfont{Futura}
+\setmonofont{IBMPlexMono-Light}[
+    Scale = MatchLowercase
+]
+
+% Definitions: Colors
 \definecolor{x16blue}{cmyk}{1.00, 0.50, 0.00, 0.00}
-\definecolor{x16gray}{cmyk}{0.00, 0.00, 0.00, 0.20}
+%\definecolor{x16gray}{cmyk}{0.00, 0.00, 0.00, 0.20}
+\definecolor{x16darkgray}{cmyk}{0.00, 0.00, 0.00, 0.80}
+
+% Definitions: Page format
+\fancypagestyle{whitepagenum}{
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+    \fancyfoot[C]{\textcolor{white}{\thepage}}
+}
+
+% Definitions: Ensure bleed background color
+\makeatletter
+\let\org@set@page@color\set@page@color
+\makeatother
+
+\makeatletter
+\AtBeginDocument{\let\set@page@color\org@set@page@color}
+\makeatother
+
+% Definitions: Section format
 \titleformat{\chapter}[display]
     {\normalfont\sffamily\raggedleft\huge\bfseries\color{white}}
     {\chaptertitlename\ \thechapter}{20pt}{\Huge}
@@ -39,15 +69,31 @@
     {\normalfont\bfseries\huge\color{x16blue}}{\thesection}{20pt}{}
 \titleformat{\subsection}
     {\normalfont\bfseries\large\color{x16blue}}{\thesection}{20pt}{}
-\fancypagestyle{whitepagenum}{
-    \fancyhf{}
-    \renewcommand{\headrulewidth}{0pt}
-    \renewcommand{\footrulewidth}{0pt}
-    \fancyfoot[C]{\textcolor{white}{\thepage}}
-}
+
 \newcommand*\NoIndentAfterEnv[1]{%
   \AfterEndEnvironment{#1}{\par\@afterindentfalse\@afterheading}}
 \makeatother
+
+% Definitions: Table format
+\DefTblrTemplate{firsthead, middlehead,lasthead}{default}{}
+
+\newcommand{\discardcol}[1]{}  % Define a command that ignores its argument
+
+% Definition: Code listing
+\lstset{
+    frame=single,                    % Add frame around code
+    framerule=0.5pt,
+    framesep=5pt,                    % Padding between frame and code
+    rulecolor=\color{black},
+    breaklines=true,                 % Enable automatic line breaking
+    breakatwhitespace=true,          % Break at spaces when possible
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},  % Visual indicator for line continuation
+    basicstyle=\ttfamily\small,
+    showstringspaces=false,
+    numbersep=5pt,
+    tabsize=4,
+    captionpos=b,
+}
 
 % Chapter environment
 \newenvironment{chapterpage}[1]
@@ -61,8 +107,8 @@
     %end
     {
         \color{black}
-        \afterpage{\nopagecolor}
         \newpage
+        \pagecolor{white}
     }
 
 % Chapter content list
@@ -76,18 +122,26 @@
         \end{itemize}
     }
 
-% Suppress indentation
-%\NoIndentAfterEnv{chapterpage}
+% Box for <mark> tag
+\newtcbox{\markbox}{
+    on line, % This prevents line breaks
+    colback=darkgray, coltext=white, 
+    boxrule=0pt, arc=2pt, boxsep=1pt,
+    left=1pt, right=1pt, top=3pt, bottom=1pt,
+    height=2.2ex,
+    valign=center,
+    fontupper=\fontsize{7}{7}\selectfont,
+    baseline=2pt
+}
 
-% TODO
-\newenvironment{tightlist}{}{}
-\newenvironment{Shaded}
+\newenvironment{x16mark}
     {
-        \begin{tcolorbox}[colframe=x16blue,colback=x16gray,boxrule=0.5pt]
+        \begin{tcolorbox}[size=\fbox]
         \ttfamily\scriptsize
+        \color{white}
     }
     {
         \end{tcolorbox}
-    }
-\newenvironment{Highlighting}{}{} 
-\newcommand{\NormalTok}[1]{\par #1}
+        \color{black}
+   }
+
