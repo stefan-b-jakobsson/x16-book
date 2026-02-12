@@ -10,6 +10,9 @@ import mistletoe.latex_token as latex_token
 from mistletoe.base_renderer import BaseRenderer, URI_SAFE_CHARACTERS
 from mistletoe.block_token import HtmlBlock
 from mistletoe.span_token import HtmlSpan
+from mistletoe.block_tokenizer import tokenize
+from mistletoe.block_token import _token_types
+from bs4 import BeautifulSoup
 
 # (customizable) delimiters for inline code
 verb_delimiters = string.punctuation + string.digits
@@ -265,6 +268,74 @@ class X16LaTeXRenderer(BaseRenderer):
         return ""
     
     def render_html_block(self, token) -> str:
-        return ""
-        #return token.content
+        response = ""
 
+        # Render HTML <summary>
+        match_summary = re.search(r"<summary[^>]*>(.*?)</summary>",token.content, re.DOTALL)
+        if match_summary:
+            response = "\\par " + match_summary.group(1)
+        
+        # Render HTML <table>
+        match_table = re.search(r"<table[^>]*>.*?</table>",token.content, re.DOTALL)
+        if match_table:
+            table_struct = "\\hline\n"
+            table_colspec = ""
+            currow = 1
+            curcol = 1
+
+            table = BeautifulSoup(match_table.group(0), "html.parser")
+            for row in table.find_all("tr"):
+                for cell in row.find_all(re.compile("td|th")):
+                    # Headers
+                    if currow == 1:
+                        if curcol >1:
+                            table_colspec += " "
+                        else:
+                            table_colspec += "| "
+                        table_colspec += "X[1,l] |"
+
+                    # Cells
+                    if curcol > 1:
+                        table_struct += " & "
+                    
+                    if "colspan" in cell.attrs:
+                        colspan = int(cell.attrs["colspan"])
+                    else:
+                        colspan = None
+                    if "align" in cell.attrs:
+                        align = cell.attrs["align"][0]
+                        if not colspan: colspan = 1
+                    else:
+                        if colspan:
+                            align = "l"
+                        else: 
+                            align = None
+
+                    if colspan:
+                        table_struct += "\\SetCell[c={cspan}]{{{halign}}} ".format(cspan=colspan, halign=align)
+                    
+                    table_struct += escape_string(cell.contents[0].string.strip())
+                    if colspan:
+                        for i in range(1,int(colspan)):
+                            table_struct += " &"
+                    curcol += 1
+                
+                table_struct += " \\\\\n\\hline\n"
+                currow += 1
+                curcol = 1
+
+            template =  ('\\begin{{longtblr}}{{'
+                         'colspec = {{{colspec}}},\n'
+                         '{hidecol}'
+                         'width = \\linewidth,\n'
+                         'rowhead = 1,\n'
+                         'rowfoot = 0}}\n'
+                         '{inner}\n'
+                         '\\end{{longtblr}}\n'
+                        )
+            response += "\n\n" + template.format(colspec=table_colspec, hidecol="", inner=table_struct)
+
+        return response
+
+def escape_string(s):
+    return s.replace('\\', '\\textbackslash ').replace('$', '\\$').replace('#', '\\#').replace('{', '\\{').replace('}', '\\}').replace('&', '\\&').replace('_', '\\_').replace('%', '\\%').replace('^', '\\^')

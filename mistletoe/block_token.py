@@ -1068,6 +1068,10 @@ class HtmlBlock(BlockToken):
         stripped = line.lstrip()
         if len(line) - len(stripped) >= 4:
             return False
+        # rule 8:
+        if stripped.startswith("<details"):
+            cls._end_cond = '>'
+            return 8
         # rule 1: HTML tags designed to contain literal content, allow newlines in block
         match_obj = cls.multiblock.match(stripped)
         if match_obj is not None:

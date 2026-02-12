@@ -13,11 +13,11 @@
 % Page layout
 
     % 9x6in on A4 paper
-    %\RequirePackage[paperheight=9in,paperwidth=6in]{geometry}
-    %\RequirePackage[noaxes,cam,height=297mm,width=210mm,center]{crop}
+    \RequirePackage[paperheight=9in,paperwidth=6in]{geometry}
+    \RequirePackage[noaxes,cam,height=297mm,width=210mm,center]{crop}
 
     % 9x6in, no bleed
-    \RequirePackage[paperheight=9in,paperwidth=6in]{geometry}
+    %\RequirePackage[paperheight=9in,paperwidth=6in]{geometry}
 
 % Packages
 \RequirePackage{fontspec}
@@ -32,6 +32,8 @@
 \RequirePackage{tabularray}
 \RequirePackage{listings}
 \RequirePackage{csquotes}
+\RequirePackage[export]{adjustbox}
+\RequirePackage{afterpage}
 
 % Definitions: Fonts
 \setmainfont{Futura}
